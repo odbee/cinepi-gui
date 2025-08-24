@@ -2,7 +2,7 @@
 
 #include <stdexcept>
 
-void Application::init(unsigned int w = 1280, unsigned int h = 720){
+void Application::init(unsigned int w = 240, unsigned int h = 240){
     console->info("Application Initialization started");
 
     app_width = w;
