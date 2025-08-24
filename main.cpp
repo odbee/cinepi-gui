@@ -12,11 +12,6 @@ int main()
     Page* viewport_page = make_viewport_page(app);
     Viewport* viewport = reinterpret_cast<Viewport*>(viewport_page);
 
-    Page* overlay_page = make_overlays_page(app);
-    Overlays* overlays = reinterpret_cast<Overlays*>(overlay_page);
-
-    Page* menus_page = make_menus_page(app);
-    Menus* menus = reinterpret_cast<Menus*>(menus_page);
 
     bool done = false;
     while (!done)
@@ -52,13 +47,6 @@ int main()
 
         // show the viewport 
         viewport->show();
-
-        // show the overlays ( crosshairs, thirds, etc.. )
-        overlays->show();
-
-        // show the menus / controls 
-        menus->show();
-
         // ---- end render ----- //
         app.endDraw();
     }

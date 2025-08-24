@@ -6,7 +6,7 @@
 #include "imgui.h"
 
 #include "Application.hpp"
-#include "ImgAsset.hpp"
+
 #include "EglBuffers.hpp"
 
 #include <spdlog/spdlog.h>
@@ -29,53 +29,9 @@ class Page {
         
 };
 
-Page *make_overlays_page(Application& app);
 Page *make_viewport_page(Application& app);
-Page *make_menus_page(Application& app);
 
-class Menus : public Page
-{
-    public:
-        Menus(Application& app) : 
-            Page(app),
-            logo("cinepi-gui/assets/img/logo.png")
-            {
-                console = spdlog::stdout_color_mt("menus");
-            }
-        ~Menus() {}
 
-        virtual void show() override;
-
-    private:
-
-        int menu_height = 96;
-
-        void menu_top();
-        void menu_bottom();
-
-        ImgAsset logo;
-        
-};
-
-class Overlays : public Page
-{
-    public:
-        Overlays(Application& app) : 
-            Page(app),
-            en_cross(true), en_thirds(true)
-            {
-                console = spdlog::stdout_color_mt("overlays");
-            }
-        ~Overlays() {}
-
-        virtual void show() override;
-
-        bool en_cross;
-        bool en_thirds;
-
-    private:
-        
-};
 
 class Viewport : public Page
 {

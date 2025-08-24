@@ -20,7 +20,7 @@
 
 #include "SharedContext.hpp"
 #include "EglBuffers.hpp"
-#include "Diagnostics.hpp"
+
 
 class Application {
     public:
@@ -42,7 +42,6 @@ class Application {
 
         SharedContext cinepiraw;
         EglBuffers buffers;
-        Diagnostics stats;
 
         void init(unsigned int w, unsigned int h);
         void beginDraw();
