@@ -11,7 +11,7 @@
 #include <spdlog/spdlog.h>
 #include <spdlog/sinks/stdout_color_sinks.h>
 
-#include "assets/font/font_awesome.h"
+
 
 #include <SDL.h>
 #include <SDL_opengl.h>
@@ -29,13 +29,19 @@ class Application {
             abortThread_(false)
         {
             console = spdlog::stdout_color_mt("application");
+            console->info("Application Constructed");
+
             // main_thread_ = std::thread(std::bind(&Application::threadTask, this));
 
         } 
         ~Application()
-        {
+        {   
+            console->info("Application Destructed");
+
             abortThread_ = true;
-            main_thread_.join();
+            if (main_thread_.joinable()) {
+                main_thread_.join();
+            }       
         } 
 
         SDL_Window* window;
@@ -52,15 +58,6 @@ class Application {
         unsigned int app_width;
         unsigned int app_height;
 
-        ImFont* icons_font24;
-        ImFont* icons_font36;
-        ImFont* icons_font48;
-
-        ImFont* ui8;
-        ImFont* ui16;
-        ImFont* ui24;
-        ImFont* ui36;
-        ImFont* ui48;
 
         std::shared_ptr<spdlog::logger> console;
 

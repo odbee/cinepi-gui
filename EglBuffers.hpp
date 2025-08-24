@@ -131,8 +131,9 @@ class EglBuffers {
 
         int current_index_;
         std::map<int, FrameBuffer> buffers_; // map the DMABUF's fd to the Buffer
-        int last_fd_;
         bool first_time_;
+        int last_fd_;
+
 
         bool newFrame_;
 

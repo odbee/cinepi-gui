@@ -8,7 +8,7 @@ std::string readShaderFile(const char* shaderPath) {
     // Open file
     shaderFile.open(shaderPath);
     if (!shaderFile.is_open()) {
-        std::cerr << "Failed to open shader file: " << shaderPath << std::endl;
+        std::cerr << "(shader.cpp) Failed to open shader file: " << shaderPath << std::endl;
         return "";
     }
 

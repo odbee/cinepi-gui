@@ -35,6 +35,7 @@ void SharedContext::bind_shared_memory() {
 
     shared_memory = (SharedMemoryBuffer*)shmat(segment_id, NULL, 0);
     if (shared_memory == (void*) -1) {
+        shared_memory = nullptr; // Set to nullptr for safety
         smB = false;
     }
 
@@ -43,11 +44,16 @@ void SharedContext::bind_shared_memory() {
 
 void SharedContext::threadTask(){
     console->info("thread started!");
+        
+
     const SharedMemoryBuffer* context = get_context();
+    console->info("received context!");
     while(!abortThread_){
         if(context == nullptr){
             // console->critical("shared_memory dropped!");
             state_ |= STATE_NULL_REF;
+            std::this_thread::sleep_for(std::chrono::milliseconds(10));
+            continue; // Don't dereference nullptr
         } else {
             state_ &= ~STATE_NULL_REF;
         }
@@ -74,4 +80,5 @@ void SharedContext::threadTask(){
 
         std::this_thread::sleep_for(std::chrono::milliseconds(1));
     }
+    console->info("thread ended!");
 }

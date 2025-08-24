@@ -19,6 +19,33 @@ source_files = files('main.cpp',
                      join_paths(imgui_dir, 'backends/imgui_impl_sdl2.cpp'),
                      join_paths(imgui_dir, 'backends/imgui_impl_opengl3.cpp'))
 
+
+source_files_testing = files('main_testing.cpp',
+                     'Application_testing.cpp',
+                     'SharedContext.cpp',
+                     'EglBuffers.cpp',
+                     'Page_testing.cpp',
+                     'Viewport_testing.cpp',
+                     join_paths(imgui_dir, 'imgui.cpp'),
+                     join_paths(shaders_dir, 'Shader.cpp'),
+                     join_paths(shaders_dir, 'ComputeShader.cpp'),
+                     join_paths(imgui_dir, 'imgui_demo.cpp'),
+                     join_paths(imgui_dir, 'imgui_draw.cpp'),
+                     join_paths(imgui_dir, 'imgui_tables.cpp'),
+                     join_paths(imgui_dir, 'imgui_widgets.cpp'),
+                     join_paths(imgui_dir, 'backends/imgui_impl_sdl2.cpp'),
+                     join_paths(imgui_dir, 'backends/imgui_impl_opengl3.cpp'))
+
+
+source_files_mini = files('main_mini.cpp',
+                     join_paths(imgui_dir, 'imgui.cpp'),
+                     join_paths(imgui_dir, 'imgui_demo.cpp'),
+                     join_paths(imgui_dir, 'imgui_draw.cpp'),
+                     join_paths(imgui_dir, 'imgui_tables.cpp'),
+                     join_paths(imgui_dir, 'imgui_widgets.cpp'),
+                     join_paths(imgui_dir, 'backends/imgui_impl_sdl2.cpp'),
+                     join_paths(imgui_dir, 'backends/imgui_impl_opengl3.cpp'))
+
 # Dependency management
 spdlog_dep = dependency('spdlog')
 sdl2_dep = dependency('sdl2', method : 'pkg-config')
@@ -44,3 +71,22 @@ executable('cinepi-gui', source_files,
            include_directories : include_directories(imgui_dir, join_paths(imgui_dir, 'backends')),
            dependencies : [spdlog_dep, libcamera_dep, sdl2_dep, egl_dep, drm_dep] + platform_deps,
            install : true)
+
+executable('cinepi-gui-testing', source_files_testing,
+           include_directories : include_directories(imgui_dir, join_paths(imgui_dir, 'backends')),
+           dependencies : [spdlog_dep, libcamera_dep, sdl2_dep, egl_dep, drm_dep] + platform_deps,
+           install : true)
+
+executable('cinepi-gui-mini', source_files_mini,
+           include_directories : include_directories(imgui_dir, join_paths(imgui_dir, 'backends')),
+           dependencies : [spdlog_dep, libcamera_dep, sdl2_dep, egl_dep, drm_dep] + platform_deps,
+           install : true)
+
+# Install shader files
+install_data(
+    [
+        join_paths(shaders_dir, 'eglYuv.vert'),
+        join_paths(shaders_dir, 'eglYuv.frag')
+    ],
+    install_dir : join_paths(get_option('datadir'), 'cinepi-gui', 'shaders')
+)
