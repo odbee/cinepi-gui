@@ -95,6 +95,14 @@ class SharedContext {
         };
 
         SharedMemoryBuffer* get_context() const{
+            if(shared_memory == nullptr) {
+                console->debug("shared_memory is nullptr");
+                return nullptr;
+            }
+            if(shared_memory == (void*)-1) {
+                console->debug("shared_memory is invalid (-1)");
+                return nullptr;
+            }
             return shared_memory;
         }
 

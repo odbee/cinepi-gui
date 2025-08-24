@@ -41,7 +41,7 @@ int main()
         {
             FrameBuffer fb = app.buffers.getBuffer();
 
-            app.console->info(fb.framerate);
+            // app.console->info(fb.framerate);
             // execute shaders and run image processing on new frame here
 
             // render the viewport shaders 

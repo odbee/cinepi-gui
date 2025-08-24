@@ -91,7 +91,6 @@ int EglBuffers::init(){
     PFNEGLQUERYDEVICESEXTPROC eglQueryDevicesEXT = (PFNEGLQUERYDEVICESEXTPROC)eglGetProcAddress("eglQueryDevicesEXT");
     eglQueryDevicesEXT(MAX_DEVICES, eglDevs, &numDevices);
     printf("Detected %d devices\n", numDevices);
-
     MyEglError();
 
     PFNEGLGETPLATFORMDISPLAYEXTPROC eglGetPlatformDisplayEXT =
@@ -262,6 +261,8 @@ void EglBuffers::makeBuffer(const SharedMemoryBuffer* context, FrameBuffer &buff
 
 void EglBuffers::update(){
     if(!shared.connected()){
+        // console->warn("Shared context not connected");
+
         if(!first_time_){
             reset();
         }
@@ -279,7 +280,7 @@ void EglBuffers::update(){
 		
     if(last_fd_ != current_index_){
         newFrame_ = true;
-        console->info("FD: {}, FN: {}, FR: {}, SEQ: {}", current_index_, context->frame, context->metadata.focus, context->metadata.exposure_time);
+        // console->info("FD: {}, FN: {}, FR: {}, SEQ: {}", current_index_, context->frame, context->metadata.focus, context->metadata.exposure_time);
     }
 
     last_fd_ = current_index_;
