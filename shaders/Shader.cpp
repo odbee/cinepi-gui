@@ -58,14 +58,14 @@ void Shader::setup(int tWidth, int tHeight, GLint filtering){
     height = tHeight;
 
     float quadVertices[] = { 
-        // positions   // texture coords
-        -1.0f,  1.0f,  0.0f, 1.0f,
-        -1.0f, -1.0f,  0.0f, 0.0f,
-        1.0f, -1.0f,  1.0f, 0.0f,
+        // positions (x,y,z)      // texture coords
+        -1.0f,  1.0f, 0.0f,       0.0f, 1.0f,
+        -1.0f, -1.0f, 0.0f,       0.0f, 0.0f,
+        1.0f, -1.0f, 0.0f,       1.0f, 0.0f,
 
-        -1.0f,  1.0f,  0.0f, 1.0f,
-        1.0f, -1.0f,  1.0f, 0.0f,
-        1.0f,  1.0f,  1.0f, 1.0f
+        -1.0f,  1.0f, 0.0f,       0.0f, 1.0f,
+        1.0f, -1.0f, 0.0f,       1.0f, 0.0f,
+        1.0f,  1.0f, 0.0f,       1.0f, 1.0f
     };
 
     glGenVertexArrays(1, &quadVAO);
@@ -76,10 +76,10 @@ void Shader::setup(int tWidth, int tHeight, GLint filtering){
 
     // Position attribute
     glEnableVertexAttribArray(0);
-    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)0);
+glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)0);
     // Texture coordinate attribute
     glEnableVertexAttribArray(1);
-    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)(2 * sizeof(float)));
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)(3 * sizeof(float)));
 
     // Generate and bind texture
     glGenTextures(1, &texture);

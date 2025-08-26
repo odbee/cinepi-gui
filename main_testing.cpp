@@ -47,6 +47,7 @@ int main()
             // render the viewport shaders 
             viewport->process();
         }
+        viewport->process();
 
         // show the viewport 
         viewport->show();
