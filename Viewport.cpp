@@ -38,8 +38,8 @@ void Viewport::process()
 
         // Bind the texture
         glActiveTexture(GL_TEXTURE0);
-        // glBindTexture(GL_TEXTURE_EXTERNAL_OES, fb.isp.texture); // FB.ISP.TEXTURE IS MY CAMERAS TEXTURE, IF THERE IS SOMETHING WRONG I HAVE TO FIX
-        glBindTexture(GL_TEXTURE_2D, fb.luma.texture);
+        glBindTexture(GL_TEXTURE_EXTERNAL_OES, fb.isp.texture); // FB.ISP.TEXTURE IS MY CAMERAS TEXTURE, IF THERE IS SOMETHING WRONG I HAVE TO FIX
+
 
 
 

@@ -46,7 +46,70 @@ static void MyEglError(){
     std::cout << "EGL ERROR: "
                     << errorMessage << " :::: " << error << std::endl;
 }
+// Define the function pointer type for the extension function.
+typedef void (EGLAPIENTRYP PFNGLENEGLIMAGETARGETTEXTURE2DOESPROC) (GLenum target, GLeglImageOES image);
 
+// This is the function to be added to your EglBuffers.cpp file.
+void EglBuffers::readEGLImage(EGLDisplay eglDpy, EGLImageKHR eglImage, int width, int height) {
+    GLuint fbo, texture;
+
+    // 1. Get the function pointer for the extension function.
+    PFNGLENEGLIMAGETARGETTEXTURE2DOESPROC glEGLImageTargetTexture2DOES =
+        (PFNGLENEGLIMAGETARGETTEXTURE2DOESPROC)eglGetProcAddress("glEGLImageTargetTexture2DOES");
+    
+    // Check that the function pointer was successfully loaded.
+    if (!glEGLImageTargetTexture2DOES) {
+        console->error("Failed to get address for glEGLImageTargetTexture2DOES");
+        return;
+    }
+
+    // ... The rest of your function remains the same ...
+
+    // 2. Create a texture to act as the color attachment for the FBO.
+    glGenTextures(1, &texture);
+    glBindTexture(GL_TEXTURE_2D, texture);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+    MyEglError();
+
+    // 3. Create a framebuffer object.
+    glGenFramebuffers(1, &fbo);
+    glBindFramebuffer(GL_FRAMEBUFFER, fbo);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, texture, 0);
+    MyEglError();
+    
+    // 4. Create a texture from the EGLImage and use the function pointer to call it.
+    GLuint src_texture;
+    glGenTextures(1, &src_texture);
+    glBindTexture(GL_TEXTURE_EXTERNAL_OES, src_texture);
+    glEGLImageTargetTexture2DOES(GL_TEXTURE_EXTERNAL_OES, eglImage);
+    
+    // Check framebuffer completeness
+    if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
+        // Log an error if the framebuffer is not complete.
+        return;
+    }
+
+    // 5. Create a buffer to read the pixels into.
+    std::vector<unsigned char> pixels(width * height * 4);
+
+    // 6. Read the pixels from the FBO.
+    glReadPixels(0, 0, width, height, GL_RGBA, GL_UNSIGNED_BYTE, pixels.data());
+    MyEglError();
+    
+    // 7. Log a few of the pixel values for inspection.
+    console->info("Inspecting pixels from EGLImage...");
+    for (size_t i = 0; i < pixels.size(); i += 40000) {
+        std::string log_message = "Pixel at index " + std::to_string(i) + ": R=" + std::to_string(pixels[i]) + ", G=" + std::to_string(pixels[i+1]) + ", B=" + std::to_string(pixels[i+2]) + ", A=" + std::to_string(pixels[i+3]);
+        console->info(log_message.c_str());
+    }
+
+    // 8. Clean up
+    glDeleteTextures(1, &src_texture);
+    glDeleteTextures(1, &texture);
+    glDeleteFramebuffers(1, &fbo);
+}
 
 int getSharedProcFd(int procid, int fd){
     int pid_fd = syscall(SYS_pidfd_open, procid, 0);
@@ -122,11 +185,11 @@ int EglBuffers::init(){
 
 void EglBuffers::makeBuffer(const SharedMemoryBuffer* context, FrameBuffer &buffer)
 {
-{    
+   
 	buffer.raw.fd = getSharedProcFd(context->procid, context->fd_raw);
     buffer.raw.size = context->raw_length;
     buffer.raw.info = context->raw;
-}
+
     buffer.isp.fd = getSharedProcFd(context->procid, context->fd_isp);
     buffer.isp.size = context->isp_length;
     buffer.isp.info = context->isp;
@@ -142,7 +205,6 @@ void EglBuffers::makeBuffer(const SharedMemoryBuffer* context, FrameBuffer &buff
         return;
     }
     unsigned char* pixel_data = static_cast<unsigned char*>(mapped_data);
-    bool is_black = true;
     // Log the first 50 values of the Y plane.
     console->info("Inspecting Y (Luminance) plane. The first values are:");
     for (size_t i = 0; i < isp_length; i += 20000) {
@@ -152,13 +214,7 @@ void EglBuffers::makeBuffer(const SharedMemoryBuffer* context, FrameBuffer &buff
         std::string log_message = "At index " + std::to_string(i) + ": value " + std::to_string(pixel_data[i]);
         console->info(log_message.c_str());
     }
-    if (is_black) {
-        // Log a warning. This is where your problem is.
-        console->warn("Detected an all-black image buffer. ISP is likely not producing valid data.");
-    } else {
-        // Log a success message. The buffer contains non-zero data.
-        console->info("Detected non-black image data. The buffer contains valid pixel data.");
-    }
+
     // Unmap the buffer when you're done
     munmap(mapped_data, isp_length);
     
@@ -166,10 +222,10 @@ void EglBuffers::makeBuffer(const SharedMemoryBuffer* context, FrameBuffer &buff
 
 
 
-{
+
     buffer.luma.size = context->isp_length;
     buffer.luma.info = context->isp;
-}
+
     // buffer.lores.fd = getSharedProcFd(context->procid,context->fd_lores);
     // buffer.lores.size = context->lores_length;
     // buffer.lores.info = context->lores;
@@ -248,30 +304,33 @@ void EglBuffers::makeBuffer(const SharedMemoryBuffer* context, FrameBuffer &buff
     };
 
 
-    EGLImage image_raw = eglCreateImageKHR(eglDpy, EGL_NO_CONTEXT, EGL_LINUX_DMA_BUF_EXT, NULL, attribs_raw);
-	if (!image_raw){
-        MyEglError();
-		throw std::runtime_error("failed to import fd " + std::to_string(buffer.isp.fd));
-    }
+    // EGLImage image_raw = eglCreateImageKHR(eglDpy, EGL_NO_CONTEXT, EGL_LINUX_DMA_BUF_EXT, NULL, attribs_raw);
+	
+    // if (!image_raw){
+    //     MyEglError();
+	// 	throw std::runtime_error("failed to import fd " + std::to_string(buffer.isp.fd));
+    // }
       
 
 	EGLImage image_isp = eglCreateImageKHR(eglDpy, EGL_NO_CONTEXT, EGL_LINUX_DMA_BUF_EXT, NULL, attribs_isp);
-	if (!image_isp){
+	    MyEglError();
+
+    if (!image_isp){
         MyEglError();
 		throw std::runtime_error("failed to import fd " + std::to_string(buffer.isp.fd));
     }
 
-    EGLImage image_luma = eglCreateImageKHR(eglDpy, EGL_NO_CONTEXT, EGL_LINUX_DMA_BUF_EXT, NULL, attribs_luma);
-    if (!image_luma){
-        MyEglError();
-        throw std::runtime_error("failed to import fd " + std::to_string(buffer.isp.fd));
-    }
+    // EGLImage image_luma = eglCreateImageKHR(eglDpy, EGL_NO_CONTEXT, EGL_LINUX_DMA_BUF_EXT, NULL, attribs_luma);
+    // if (!image_luma){
+    //     MyEglError();
+    //     throw std::runtime_error("failed to import fd " + std::to_string(buffer.isp.fd));
+    // }
  
-    glGenTextures(1, &buffer.raw.texture);
-	glBindTexture(GL_TEXTURE_EXTERNAL_OES, buffer.raw.texture);
-	glTexParameteri(GL_TEXTURE_EXTERNAL_OES, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-	glTexParameteri(GL_TEXTURE_EXTERNAL_OES, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-	glEGLImageTargetTexture2DOES(GL_TEXTURE_EXTERNAL_OES, image_raw);
+    // glGenTextures(1, &buffer.raw.texture);
+	// glBindTexture(GL_TEXTURE_EXTERNAL_OES, buffer.raw.texture);
+	// glTexParameteri(GL_TEXTURE_EXTERNAL_OES, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	// glTexParameteri(GL_TEXTURE_EXTERNAL_OES, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	// glEGLImageTargetTexture2DOES(GL_TEXTURE_EXTERNAL_OES, image_raw);
 
     MyEglError();
 	glGenTextures(1, &buffer.isp.texture);
@@ -279,23 +338,24 @@ void EglBuffers::makeBuffer(const SharedMemoryBuffer* context, FrameBuffer &buff
 	glTexParameteri(GL_TEXTURE_EXTERNAL_OES, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 	glTexParameteri(GL_TEXTURE_EXTERNAL_OES, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 	glEGLImageTargetTexture2DOES(GL_TEXTURE_EXTERNAL_OES, image_isp);
+    readEGLImage(eglDpy, image_isp, buffer.isp.info.width, buffer.isp.info.height); // ADD THIS LINE
 
 
 
-    MyEglError();
-    glGenTextures(1, &buffer.luma.texture);
-	glBindTexture(GL_TEXTURE_2D, buffer.luma.texture);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_SWIZZLE_G, GL_RED);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_SWIZZLE_B, GL_RED);
-	glEGLImageTargetTexture2DOES(GL_TEXTURE_2D, image_luma);
+    // MyEglError();
+    // glGenTextures(1, &buffer.luma.texture);
+	// glBindTexture(GL_TEXTURE_2D, buffer.luma.texture);
+	// glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	// glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    // glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_SWIZZLE_G, GL_RED);
+    // glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_SWIZZLE_B, GL_RED);
+	// glEGLImageTargetTexture2DOES(GL_TEXTURE_2D, image_luma);
 
     MyEglError();
 
 	eglDestroyImageKHR(eglDpy, image_isp);
-    eglDestroyImageKHR(eglDpy, image_raw);
-    eglDestroyImageKHR(eglDpy, image_luma);
+    // eglDestroyImageKHR(eglDpy, image_raw);
+    // eglDestroyImageKHR(eglDpy, image_luma);
     buffer.mapped = 1;
     console->info("Buffer mapped! raw:{}, isp:{}, lores:{}", buffer.raw.fd, buffer.isp.fd, buffer.lores.fd);
 }

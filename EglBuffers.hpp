@@ -75,7 +75,7 @@ class EglBuffers {
         int init();
 
         void update();
-
+        void readEGLImage(EGLDisplay eglDpy, EGLImageKHR eglImage, int width, int height);
         bool new_frame(){
             bool val = newFrame_;
             newFrame_ = false;
