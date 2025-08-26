@@ -1,0 +1,69 @@
+[33mcommit a1e31571a801d2fcd4b315597669ee95563337a9[m[33m ([m[1;36mHEAD -> [m[1;32mminimal[m[33m, [m[1;31morigin/minimal-broken[m[33m, [m[1;31morigin/minimal[m[33m, [m[1;32mminimal-broken[m[33m)[m
+Author: odbee <eddysjustfortrash@gmail.com>
+Date:   Tue Aug 26 17:59:12 2025 +0200
+
+    testing phase
+
+[33mcommit 11e81f03ad7195310160e60992dcd09cbd0d70f6[m
+Author: odbee <eddysjustfortrash@gmail.com>
+Date:   Sun Aug 24 22:51:49 2025 +0200
+
+    wirking egl
+
+[33mcommit 147f4896694b8913833380330a14d7423587eed3[m
+Author: odbee <eddysjustfortrash@gmail.com>
+Date:   Sun Aug 24 22:08:32 2025 +0200
+
+    adjusted
+
+[33mcommit 09f309764978939ff9e012808fd6e288c4994fa9[m
+Author: odbee <eddysjustfortrash@gmail.com>
+Date:   Sun Aug 24 18:46:41 2025 +0200
+
+    mvp
+
+[33mcommit 8abbe5f90e0ea687fa67637a04557d7b7ffaa89a[m
+Author: odbee <eddysjustfortrash@gmail.com>
+Date:   Sun Aug 24 17:16:07 2025 +0200
+
+    minimal
+
+[33mcommit 4d1fcf8351efe9f516d711bd7f1aab644286f3e8[m[33m ([m[1;31mupstream/main[m[33m, [m[1;31mupstream/HEAD[m[33m, [m[1;31morigin/main[m[33m, [m[1;32mmain[m[33m)[m
+Author: CinePI <123136472+cinepi@users.noreply.github.com>
+Date:   Sun Feb 11 22:56:15 2024 -0700
+
+    Update README.md
+    
+    formatting and layout
+
+[33mcommit e723db20462420d82dae5c6a988dad23b07e7a36[m
+Author: Csaba Nagy <csaba@ualberta.ca>
+Date:   Thu Feb 8 20:49:06 2024 -0700
+
+    Update README.md
+    
+    include basic build instructions
+
+[33mcommit cd40d5ca868613298591e4988fa8bda246e5bd2d[m
+Author: Csaba Nagy <csaba@ualberta.ca>
+Date:   Thu Feb 8 20:44:48 2024 -0700
+
+    Add imgui as a submodule
+
+[33mcommit bc12b70d79610a670792cde535df1481ad04ec6b[m
+Author: Csaba Nagy <csaba@ualberta.ca>
+Date:   Thu Feb 8 20:44:13 2024 -0700
+
+    imgui ref fix
+
+[33mcommit bacf1e5f883da06b5e8ea059eb3d3c9f5e76a906[m
+Author: Csaba Nagy <csaba@ualberta.ca>
+Date:   Thu Feb 8 20:36:30 2024 -0700
+
+    init
+
+[33mcommit 0b0b0155fa0ead720f97ce310a1fd706d53f11bf[m
+Author: CinePI <123136472+cinepi@users.noreply.github.com>
+Date:   Thu Feb 8 20:08:46 2024 -0700
+
+    Initial commit
