@@ -1,6 +1,7 @@
 project('cinepi-gui', 'cpp', default_options : ['c_std=c++11', 'warning_level=2'])
 add_project_arguments('-DIMGUI_IMPL_OPENGL_ES3', language: ['c', 'cpp'])  # Apply to both C and C++
-
+cpp_args = ['-Wno-psabi']
+add_project_arguments(cpp_args, language: 'cpp')
 imgui_dir = 'imgui'
 shaders_dir = 'shaders'
 source_files = files('main.cpp',

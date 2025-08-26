@@ -38,6 +38,23 @@ void SharedContext::bind_shared_memory() {
         smB = false;
     }
 
+    if (shB && smB) {
+        struct shmid_ds buf;
+        if (shmctl(segment_id, IPC_STAT, &buf) == 0) {
+            if (buf.shm_segsz != sizeof(SharedMemoryBuffer)) {
+                console->critical("SIZE MISMATCH: Expected {} bytes, but found {} bytes.", sizeof(SharedMemoryBuffer), buf.shm_segsz);
+                // Size mismatch found. This is a fatal error.
+                shmdt(shared_memory); // Detach the incorrect memory
+                shared_memory = nullptr;
+                smB = false; // Flag failure
+            }
+        } else {
+            // shmctl failed, we can't trust the segment.
+            smB = false;
+        }
+    }
+
+
     state_ |= (uint8_t)(shB && smB);
 }
 
@@ -45,12 +62,15 @@ void SharedContext::threadTask(){
     console->info("thread started!");
     const SharedMemoryBuffer* context = get_context();
     while(!abortThread_){
-        if(context == nullptr){
-            // console->critical("shared_memory dropped!");
+        if(context == nullptr|| context == (SharedMemoryBuffer*)-1){
+            console->critical("shared_memory dropped or failed to bind!");
             state_ |= STATE_NULL_REF;
-        } else {
-            state_ &= ~STATE_NULL_REF;
-        }
+            std::this_thread::sleep_for(std::chrono::milliseconds(50)); // Sleep on error
+            continue; // Skip the rest of the loop for this iteration
+        } 
+        
+        state_ &= ~STATE_NULL_REF;
+        // console->info("Checking process status with context at address: {}", fmt::ptr(context));
 
         if(!(isProcessAlive(context->procid))){
             state_ &= ~STATE_VALID;
@@ -71,6 +91,9 @@ void SharedContext::threadTask(){
         }
 
         lastProcId_ = context->procid;
+
+        
+
 
         std::this_thread::sleep_for(std::chrono::milliseconds(1));
     }

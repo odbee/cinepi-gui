@@ -28,6 +28,7 @@ class Shader
         bool enabled;
 
         bool initialized;
+        
 
     private:
         GLuint compileShader(const char* source, GLenum type);

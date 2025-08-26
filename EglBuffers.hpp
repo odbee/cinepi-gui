@@ -16,6 +16,11 @@
 
 #include <libcamera/control_ids.h>
 #include <libcamera/controls.h>
+
+// DEBUG LIBS
+#include <sys/mman.h>
+
+
 namespace controls = libcamera::controls;
 
 enum BufferType {
@@ -131,9 +136,8 @@ class EglBuffers {
 
         int current_index_;
         std::map<int, FrameBuffer> buffers_; // map the DMABUF's fd to the Buffer
-        int last_fd_;
         bool first_time_;
-
+        int last_fd_;
         bool newFrame_;
 
         std::shared_ptr<spdlog::logger> console;

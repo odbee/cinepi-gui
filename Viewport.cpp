@@ -33,11 +33,16 @@ void Viewport::process()
         glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT);
 
-        glUseProgram(yuv_preview.program);
+
+        glUseProgram(yuv_preview.program);// always have to call glUseProgram before glUniform1i
 
         // Bind the texture
         glActiveTexture(GL_TEXTURE0);
-        glBindTexture(GL_TEXTURE_EXTERNAL_OES, fb.isp.texture);
+        // glBindTexture(GL_TEXTURE_EXTERNAL_OES, fb.isp.texture); // FB.ISP.TEXTURE IS MY CAMERAS TEXTURE, IF THERE IS SOMETHING WRONG I HAVE TO FIX
+        glBindTexture(GL_TEXTURE_2D, fb.luma.texture);
+
+
+
         glUniform1i(glGetUniformLocation(yuv_preview.program, "tex"), 0);
 
         glBindVertexArray(yuv_preview.quadVAO);
@@ -46,6 +51,8 @@ void Viewport::process()
 
         glBindFramebuffer(GL_FRAMEBUFFER, 0);  // Unbind FBO
     }
+
+    
 }
 
 void Viewport::show()
@@ -69,6 +76,11 @@ void Viewport::show()
 
     ImGui::Begin("Viewport", NULL, window_flags); 
 
+    if (ImGui::Button("Click Me")) {
+        // Log a message to the console when the button is pressed.
+        SDL_Log("Button pressed!");
+    }
+
     auto [pos, scale] = centerImage(fb.isp);
     ImGui::GetBackgroundDrawList()->AddImage(
         (void*)(intptr_t)yuv_preview.texture,
@@ -77,6 +89,16 @@ void Viewport::show()
         ImVec2(0, 0),
         ImVec2(1, 1)
     );
+
+    ImGui::GetWindowDrawList()->AddRect(
+    ImVec2(pos.x+4, pos.y+4),       // Top-left corner
+    ImVec2(scale.x-4, scale.y-4),       // Bottom-right corner
+    IM_COL32(255, 0, 0, 255), // Red color
+    10.0f,                  // Rounded corners
+    ImDrawFlags_RoundCornersAll,
+    2.0f                    // Line thickness
+);
+
 
     ImGui::End();
 }

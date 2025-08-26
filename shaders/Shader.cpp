@@ -11,13 +11,10 @@ std::string readShaderFile(const char* shaderPath) {
         std::cerr << "Failed to open shader file: " << shaderPath << std::endl;
         return "";
     }
-
     // Read file's buffer contents into stream
     shaderStream << shaderFile.rdbuf();
-
     // Close file handler
     shaderFile.close();
-
     // Convert stream into string
     return shaderStream.str();
 }

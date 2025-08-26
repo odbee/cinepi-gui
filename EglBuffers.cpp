@@ -122,17 +122,54 @@ int EglBuffers::init(){
 
 void EglBuffers::makeBuffer(const SharedMemoryBuffer* context, FrameBuffer &buffer)
 {
+{    
 	buffer.raw.fd = getSharedProcFd(context->procid, context->fd_raw);
     buffer.raw.size = context->raw_length;
     buffer.raw.info = context->raw;
-
+}
     buffer.isp.fd = getSharedProcFd(context->procid, context->fd_isp);
     buffer.isp.size = context->isp_length;
     buffer.isp.info = context->isp;
 
+    //DEBUG STEP
+    size_t isp_length = context->isp_length;
+
+    void* mapped_data = mmap(NULL, isp_length, PROT_READ, MAP_SHARED, buffer.isp.fd, 0);
+
+    // Check for mmap errors
+    if (mapped_data == MAP_FAILED) {
+        perror("mmap failed");
+        return;
+    }
+    unsigned char* pixel_data = static_cast<unsigned char*>(mapped_data);
+    bool is_black = true;
+    // Log the first 50 values of the Y plane.
+    console->info("Inspecting Y (Luminance) plane. The first values are:");
+    for (size_t i = 0; i < isp_length; i += 20000) {
+        if (i % 10 == 0) {
+            console->info(""); // Newline for readability
+        }
+        std::string log_message = "At index " + std::to_string(i) + ": value " + std::to_string(pixel_data[i]);
+        console->info(log_message.c_str());
+    }
+    if (is_black) {
+        // Log a warning. This is where your problem is.
+        console->warn("Detected an all-black image buffer. ISP is likely not producing valid data.");
+    } else {
+        // Log a success message. The buffer contains non-zero data.
+        console->info("Detected non-black image data. The buffer contains valid pixel data.");
+    }
+    // Unmap the buffer when you're done
+    munmap(mapped_data, isp_length);
+    
+    //DEBUG END
+
+
+
+{
     buffer.luma.size = context->isp_length;
     buffer.luma.info = context->isp;
-
+}
     // buffer.lores.fd = getSharedProcFd(context->procid,context->fd_lores);
     // buffer.lores.size = context->lores_length;
     // buffer.lores.info = context->lores;
@@ -164,9 +201,11 @@ void EglBuffers::makeBuffer(const SharedMemoryBuffer* context, FrameBuffer &buff
         MyEglError();
     }
 
-
-	get_colour_space_info(buffer.raw.info.colour_space, buffer.raw.encoding, buffer.raw.range);
+{
+    get_colour_space_info(buffer.raw.info.colour_space, buffer.raw.encoding, buffer.raw.range);
+}    
     get_colour_space_info(buffer.isp.info.colour_space, buffer.isp.encoding, buffer.isp.range);
+
     // get_colour_space_info(buffer.lores.info.colour_space, buffer.lores.encoding, buffer.lores.range);
 
     EGLint attribs_raw[] = {
@@ -208,12 +247,14 @@ void EglBuffers::makeBuffer(const SharedMemoryBuffer* context, FrameBuffer &buff
         EGL_NONE
     };
 
+
     EGLImage image_raw = eglCreateImageKHR(eglDpy, EGL_NO_CONTEXT, EGL_LINUX_DMA_BUF_EXT, NULL, attribs_raw);
 	if (!image_raw){
         MyEglError();
 		throw std::runtime_error("failed to import fd " + std::to_string(buffer.isp.fd));
     }
-        
+      
+
 	EGLImage image_isp = eglCreateImageKHR(eglDpy, EGL_NO_CONTEXT, EGL_LINUX_DMA_BUF_EXT, NULL, attribs_isp);
 	if (!image_isp){
         MyEglError();
@@ -225,7 +266,7 @@ void EglBuffers::makeBuffer(const SharedMemoryBuffer* context, FrameBuffer &buff
         MyEglError();
         throw std::runtime_error("failed to import fd " + std::to_string(buffer.isp.fd));
     }
-
+ 
     glGenTextures(1, &buffer.raw.texture);
 	glBindTexture(GL_TEXTURE_EXTERNAL_OES, buffer.raw.texture);
 	glTexParameteri(GL_TEXTURE_EXTERNAL_OES, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
@@ -233,15 +274,15 @@ void EglBuffers::makeBuffer(const SharedMemoryBuffer* context, FrameBuffer &buff
 	glEGLImageTargetTexture2DOES(GL_TEXTURE_EXTERNAL_OES, image_raw);
 
     MyEglError();
-
 	glGenTextures(1, &buffer.isp.texture);
 	glBindTexture(GL_TEXTURE_EXTERNAL_OES, buffer.isp.texture);
 	glTexParameteri(GL_TEXTURE_EXTERNAL_OES, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 	glTexParameteri(GL_TEXTURE_EXTERNAL_OES, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 	glEGLImageTargetTexture2DOES(GL_TEXTURE_EXTERNAL_OES, image_isp);
 
-    MyEglError();
 
+
+    MyEglError();
     glGenTextures(1, &buffer.luma.texture);
 	glBindTexture(GL_TEXTURE_2D, buffer.luma.texture);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);

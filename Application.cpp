@@ -2,25 +2,25 @@
 
 #include <stdexcept>
 
-void Application::init(unsigned int w = 1280, unsigned int h = 720){
+void Application::init(unsigned int w = 240, unsigned int h = 240){
     app_width = w;
     app_height = h;
 
-    SDL_SetHint(SDL_HINT_KMSDRM_DEVICE_INDEX, "1");
+    // SDL_SetHint(SDL_HINT_KMSDRM_DEVICE_INDEX, "1");
 
     // Setup SDL
-    if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_TIMER | SDL_INIT_GAMECONTROLLER) != 0)
+    if (SDL_Init(SDL_INIT_VIDEO ) != 0)
     {
         throw std::runtime_error(SDL_GetError());
     }
 
-    // GL ES 3.0 + GLSL 100
+    // GL ES 3.1 + GLSL 140
     const char* glsl_version = "#version 300 es";
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, 0);
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_ES);
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 1);
-    SDL_SetHint(SDL_HINT_OPENGL_ES_DRIVER, "1");
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_ES); // tells openGL to set a ES context
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3); // set opengl 3.x
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 1); // set opengl x.1
+    SDL_SetHint(SDL_HINT_OPENGL_ES_DRIVER, "1"); // force open gl es 
 
     // Create window with graphics context
     SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
@@ -35,8 +35,6 @@ void Application::init(unsigned int w = 1280, unsigned int h = 720){
     SDL_GL_MakeCurrent(window, gl_context);
     SDL_GL_SetSwapInterval(1); // Enable vsync
 
-    char main_font_path[] = "cinepi-gui/assets/font/ENGCAPS.TTF";
-    char icon_font_path[] = "cinepi-gui/assets/font/fontawesome-webfont.ttf";
 
     // Setup Dear ImGui context
     IMGUI_CHECKVERSION();
@@ -44,39 +42,8 @@ void Application::init(unsigned int w = 1280, unsigned int h = 720){
 
     ImGuiIO &io = ImGui::GetIO(); (void)io;
     io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;     // Enable Keyboard Controls
-    io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;      // Enable Gamepad Controls
     // Disable .ini file saving
     io.IniFilename = NULL;
-
-    io.Fonts->AddFontFromFileTTF(main_font_path, 60);
-    ui8 = io.Fonts->AddFontFromFileTTF(main_font_path, 8);
-    ui16 = io.Fonts->AddFontFromFileTTF(main_font_path, 16);
-    ui24 = io.Fonts->AddFontFromFileTTF(main_font_path, 24);
-    ui36 = io.Fonts->AddFontFromFileTTF(main_font_path, 36);
-    ui48 = io.Fonts->AddFontFromFileTTF(main_font_path, 48);
-
-    static const ImWchar icon_ranges[] = {ICON_MIN_FA, ICON_MAX_FA, 0};
-    ImFontConfig icons_config1;
-    icons_config1.MergeMode = true;
-    icons_config1.PixelSnapH = true;
-    icons_config1.OversampleH = 4;
-    icons_config1.OversampleV = 4;
-
-    ImFontConfig icons_config2;
-    icons_config2.MergeMode = true;
-    icons_config2.PixelSnapH = true;
-    icons_config2.OversampleH = 4;
-    icons_config2.OversampleV = 4;
-
-    ImFontConfig icons_config3;
-    icons_config3.MergeMode = true;
-    icons_config3.PixelSnapH = true;
-    icons_config3.OversampleH = 4;
-    icons_config3.OversampleV = 4;
-
-    icons_font24 = io.Fonts->AddFontFromFileTTF(icon_font_path, 24.0f, &icons_config1, icon_ranges);
-    icons_font36 = io.Fonts->AddFontFromFileTTF(icon_font_path, 36.0f, &icons_config2, icon_ranges);
-    icons_font48 = io.Fonts->AddFontFromFileTTF(icon_font_path, 48.0f, &icons_config3, icon_ranges);
 
     ImGui::StyleColorsDark();
 
@@ -121,17 +88,7 @@ void Application::internal_overlay(){
     window_flags |= ImGuiWindowFlags_NoBackground;
 
     ImGui::Begin("internal_overlay", NULL, window_flags); 
-    ImDrawList* draw_list = ImGui::GetWindowDrawList();
-    
-    // Calculate the position for the text
-    const char* version_text = "CINEPI-GUI v0.0.1";
-    ImVec2 text_size = ImGui::CalcTextSize(version_text);
-    ImVec2 text_pos = ImVec2(
-        io.DisplaySize.x - text_size.x - (-192),  // X position: window width - text width - padding
-        io.DisplaySize.y - text_size.y - (-32)   // Y position: window height - text height - padding
-    );
 
-    draw_list->AddText(ui16, ui16->FontSize, text_pos, IM_COL32(255, 255, 255, 128), version_text);
     ImGui::End();
 }
 
