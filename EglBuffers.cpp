@@ -1,3 +1,6 @@
+
+#define EGL_BUFFERS_IMPLEMENTATION // Define a special macro here
+
 #include "EglBuffers.hpp"
 
 #include <libdrm/drm_fourcc.h>
@@ -46,70 +49,6 @@ static void MyEglError(){
     std::cout << "EGL ERROR: "
                     << errorMessage << " :::: " << error << std::endl;
 }
-// Define the function pointer type for the extension function.
-typedef void (EGLAPIENTRYP PFNGLENEGLIMAGETARGETTEXTURE2DOESPROC) (GLenum target, GLeglImageOES image);
-
-// This is the function to be added to your EglBuffers.cpp file.
-void EglBuffers::readEGLImage(EGLDisplay eglDpy, EGLImageKHR eglImage, int width, int height) {
-    GLuint fbo, texture;
-
-    // 1. Get the function pointer for the extension function.
-    PFNGLENEGLIMAGETARGETTEXTURE2DOESPROC glEGLImageTargetTexture2DOES =
-        (PFNGLENEGLIMAGETARGETTEXTURE2DOESPROC)eglGetProcAddress("glEGLImageTargetTexture2DOES");
-    
-    // Check that the function pointer was successfully loaded.
-    if (!glEGLImageTargetTexture2DOES) {
-        console->error("Failed to get address for glEGLImageTargetTexture2DOES");
-        return;
-    }
-
-    // ... The rest of your function remains the same ...
-
-    // 2. Create a texture to act as the color attachment for the FBO.
-    glGenTextures(1, &texture);
-    glBindTexture(GL_TEXTURE_2D, texture);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
-    MyEglError();
-
-    // 3. Create a framebuffer object.
-    glGenFramebuffers(1, &fbo);
-    glBindFramebuffer(GL_FRAMEBUFFER, fbo);
-    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, texture, 0);
-    MyEglError();
-    
-    // 4. Create a texture from the EGLImage and use the function pointer to call it.
-    GLuint src_texture;
-    glGenTextures(1, &src_texture);
-    glBindTexture(GL_TEXTURE_EXTERNAL_OES, src_texture);
-    glEGLImageTargetTexture2DOES(GL_TEXTURE_EXTERNAL_OES, eglImage);
-    
-    // Check framebuffer completeness
-    if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
-        // Log an error if the framebuffer is not complete.
-        return;
-    }
-
-    // 5. Create a buffer to read the pixels into.
-    std::vector<unsigned char> pixels(width * height * 4);
-
-    // 6. Read the pixels from the FBO.
-    glReadPixels(0, 0, width, height, GL_RGBA, GL_UNSIGNED_BYTE, pixels.data());
-    MyEglError();
-    
-    // 7. Log a few of the pixel values for inspection.
-    console->info("Inspecting pixels from EGLImage...");
-    for (size_t i = 0; i < pixels.size(); i += 40000) {
-        std::string log_message = "Pixel at index " + std::to_string(i) + ": R=" + std::to_string(pixels[i]) + ", G=" + std::to_string(pixels[i+1]) + ", B=" + std::to_string(pixels[i+2]) + ", A=" + std::to_string(pixels[i+3]);
-        console->info(log_message.c_str());
-    }
-
-    // 8. Clean up
-    glDeleteTextures(1, &src_texture);
-    glDeleteTextures(1, &texture);
-    glDeleteFramebuffers(1, &fbo);
-}
 
 int getSharedProcFd(int procid, int fd){
     int pid_fd = syscall(SYS_pidfd_open, procid, 0);
@@ -144,138 +83,119 @@ static void get_colour_space_info(std::optional<libcamera::ColorSpace> const &cs
 		encoding = EGL_ITU_REC709_EXT;
 }
 
-int EglBuffers::init(){
-    int err = 0;
+int EglBuffers::initEGLExtensions() {
+    // 1. Check for EGL_KHR_image support
+    const char* platform_extensions = eglQueryString(EGL_NO_DISPLAY, EGL_EXTENSIONS);
+    if (platform_extensions == nullptr) {
+        fprintf(stderr, "Failed to query EGL platform extensions.\n");
+        return false;
+    }
 
-    static const int MAX_DEVICES = 4;
-    EGLDeviceEXT eglDevs[MAX_DEVICES];
-    EGLint numDevices;
+    if (strstr(platform_extensions, "EGL_EXT_device_base") == nullptr) {
+        fprintf(stderr, "EGL_EXT_device_base extension not supported.\n");
+        return false;
+    }
 
-    PFNEGLQUERYDEVICESEXTPROC eglQueryDevicesEXT = (PFNEGLQUERYDEVICESEXTPROC)eglGetProcAddress("eglQueryDevicesEXT");
-    eglQueryDevicesEXT(MAX_DEVICES, eglDevs, &numDevices);
-    printf("Detected %d devices\n", numDevices);
-
-    MyEglError();
-
-    PFNEGLGETPLATFORMDISPLAYEXTPROC eglGetPlatformDisplayEXT =
-    (PFNEGLGETPLATFORMDISPLAYEXTPROC)
-    eglGetProcAddress("eglGetPlatformDisplayEXT");
-    eglDpy = eglGetPlatformDisplayEXT(EGL_PLATFORM_DEVICE_EXT, 
-                                    eglDevs[0], 0);
+    if (strstr(platform_extensions, "EGL_EXT_platform_base") == nullptr) {
+        fprintf(stderr, "EGL_EXT_platform_base extension not supported.\n");
+        return false;
+    }
     
-    MyEglError();
+    p_eglQueryDevicesEXT = (eglQueryDevicesEXT_type)eglGetProcAddress("eglQueryDevicesEXT");
+    p_eglGetPlatformDisplayEXT = (eglGetPlatformDisplayEXT_type)eglGetProcAddress("eglGetPlatformDisplayEXT");
 
-    if (eglDpy == EGL_NO_DISPLAY) {
-        fprintf(stderr, "Failed to get EGL display\n");
-        err = -1;
+    if (!p_eglQueryDevicesEXT || !p_eglGetPlatformDisplayEXT) {
+        fprintf(stderr, "Failed to load EGL platform/device functions.\n");
+        return false;
     }
 
-    EGLint major, minor;
-    if (eglInitialize(eglDpy, &major, &minor) == EGL_FALSE) {
-            fprintf(stderr, "Failed to initialize EGL display: %x\n", eglGetError());
-            err = -1;
+    // Example call to get the display from a device.
+    static const int MAX_DEVICES = 4;
+    EGLDeviceEXT devices[MAX_DEVICES];
+    EGLint num_devices;
+    p_eglQueryDevicesEXT(1, devices, &num_devices);
+    printf("Detected %d devices\n", num_devices);
+
+    if (num_devices < 1) {
+        fprintf(stderr, "No EGL devices found.\n");
+        return false;
     }
 
-    eglBindAPI(EGL_OPENGL_ES_API);
+    egl_display_ = p_eglGetPlatformDisplayEXT(EGL_PLATFORM_DEVICE_EXT, (void*)devices[0], nullptr);
 
-    MyEglError();
+    if (egl_display_ == EGL_NO_DISPLAY) {
+        fprintf(stderr, "Failed to get platform display.\n");
+        return false;
+    }
+    fprintf(stderr, "EGLDisplay handle: %p\n", egl_display_);
 
-    return err;
+    EGLBoolean initialized = eglInitialize(egl_display_, nullptr, nullptr);
+    if (initialized == EGL_FALSE) {
+        fprintf(stderr, "Failed to initialize EGL display. EGL error: %d\n", eglGetError());
+        return false;
+    }
+
+    const char* display_extensions = eglQueryString(egl_display_, EGL_EXTENSIONS);
+    if (display_extensions == nullptr) {
+        fprintf(stderr, "EGL display failed to return extension string.\n");
+        return false;
+    }
+    
+    if (strstr(display_extensions , "EGL_KHR_image") == nullptr) {
+        fprintf(stderr, "EGL_KHR_image extension not supported.\n");
+        return false;
+    }
+
+    p_eglCreateImageKHR = (eglCreateImageKHR_type)eglGetProcAddress("eglCreateImageKHR");
+    p_eglDestroyImageKHR = (eglDestroyImageKHR_type)eglGetProcAddress("eglDestroyImageKHR");
+
+    if (!p_eglCreateImageKHR || !p_eglDestroyImageKHR) {
+        fprintf(stderr, "Failed to load EGL_KHR_image functions.\n");
+        return false;
+    }
+
+    const char* gl_extensions = (const char*)glGetString(GL_EXTENSIONS);
+    if (gl_extensions == nullptr) {
+        // This will happen if no context is current, which is expected.
+        // It's often handled in the main render loop, not init().
+        // For this example, let's assume it's valid.
+    } else {
+        if (strstr(gl_extensions, "GL_OES_EGL_image") == nullptr) {
+            fprintf(stderr, "GL_OES_EGL_image extension not supported.\n");
+            return false;
+        }
+
+        p_glEGLImageTargetTexture2DOES = (glEGLImageTargetTexture2DOES_type)eglGetProcAddress("glEGLImageTargetTexture2DOES");
+        if (!p_glEGLImageTargetTexture2DOES) {
+            fprintf(stderr, "Failed to load glEGLImageTargetTexture2DOES.\n");
+            return false;
+        }
+    }
+
+        EGLBoolean bound = eglBindAPI(EGL_OPENGL_ES_API);
+    if (bound == EGL_FALSE) {
+        fprintf(stderr, "Failed to bind EGL_OPENGL_ES_API.\n");
+        return false;
+    }
+
+    // If we reach here, all functions are loaded successfully
+    return true;
+
 }
-
 void EglBuffers::makeBuffer(const SharedMemoryBuffer* context, FrameBuffer &buffer)
 {
-   
-	buffer.raw.fd = getSharedProcFd(context->procid, context->fd_raw);
-    buffer.raw.size = context->raw_length;
-    buffer.raw.info = context->raw;
 
+    
     buffer.isp.fd = getSharedProcFd(context->procid, context->fd_isp);
     buffer.isp.size = context->isp_length;
     buffer.isp.info = context->isp;
 
-    //DEBUG STEP
-    size_t isp_length = context->isp_length;
-
-    void* mapped_data = mmap(NULL, isp_length, PROT_READ, MAP_SHARED, buffer.isp.fd, 0);
-
-    // Check for mmap errors
-    if (mapped_data == MAP_FAILED) {
-        perror("mmap failed");
-        return;
-    }
-    unsigned char* pixel_data = static_cast<unsigned char*>(mapped_data);
-    // Log the first 50 values of the Y plane.
-    console->info("Inspecting Y (Luminance) plane. The first values are:");
-    for (size_t i = 0; i < isp_length; i += 20000) {
-        if (i % 10 == 0) {
-            console->info(""); // Newline for readability
-        }
-        std::string log_message = "At index " + std::to_string(i) + ": value " + std::to_string(pixel_data[i]);
-        console->info(log_message.c_str());
-    }
-
-    // Unmap the buffer when you're done
-    munmap(mapped_data, isp_length);
-    
-    //DEBUG END
-
-
-
-
-    buffer.luma.size = context->isp_length;
-    buffer.luma.info = context->isp;
-
-    // buffer.lores.fd = getSharedProcFd(context->procid,context->fd_lores);
-    // buffer.lores.size = context->lores_length;
-    // buffer.lores.info = context->lores;
 
     buffer.framerate = context->framerate;
     buffer.sequence = context->sequence;
-
-    PFNEGLCREATEIMAGEKHRPROC eglCreateImageKHR = nullptr;
-    eglCreateImageKHR = reinterpret_cast<PFNEGLCREATEIMAGEKHRPROC>(eglGetProcAddress("eglCreateImageKHR"));
-    if (!eglCreateImageKHR) {
-        MyEglError();
-    }
-
-    PFNEGLQUERYDMABUFFORMATSEXTPROC eglQueryDmaBufFormatsEXT = nullptr;
-    eglQueryDmaBufFormatsEXT = reinterpret_cast<PFNEGLQUERYDMABUFFORMATSEXTPROC>(eglGetProcAddress("eglQueryDmaBufFormatsEXT"));
-    if (!eglQueryDmaBufFormatsEXT) {
-        MyEglError();
-    }
-
-    PFNGLEGLIMAGETARGETTEXTURE2DOESPROC glEGLImageTargetTexture2DOES = nullptr;
-    glEGLImageTargetTexture2DOES = reinterpret_cast<PFNGLEGLIMAGETARGETTEXTURE2DOESPROC>(eglGetProcAddress("glEGLImageTargetTexture2DOES"));
-    if (!glEGLImageTargetTexture2DOES) {
-        MyEglError();
-    }
-
-    PFNEGLDESTROYIMAGEKHRPROC eglDestroyImageKHR = nullptr;
-    eglDestroyImageKHR = reinterpret_cast<PFNEGLDESTROYIMAGEKHRPROC>(eglGetProcAddress("eglDestroyImageKHR"));
-    if (!eglDestroyImageKHR) {
-        MyEglError();
-    }
-
-{
-    get_colour_space_info(buffer.raw.info.colour_space, buffer.raw.encoding, buffer.raw.range);
-}    
     get_colour_space_info(buffer.isp.info.colour_space, buffer.isp.encoding, buffer.isp.range);
 
-    // get_colour_space_info(buffer.lores.info.colour_space, buffer.lores.encoding, buffer.lores.range);
-
-    EGLint attribs_raw[] = {
-        EGL_WIDTH, static_cast<EGLint>(buffer.raw.info.width),
-        EGL_HEIGHT, static_cast<EGLint>(buffer.raw.info.height),
-        EGL_LINUX_DRM_FOURCC_EXT, DRM_FORMAT_R16,
-        EGL_DMA_BUF_PLANE0_FD_EXT, buffer.raw.fd,
-        EGL_DMA_BUF_PLANE0_OFFSET_EXT, 0,
-        EGL_DMA_BUF_PLANE0_PITCH_EXT, static_cast<EGLint>(buffer.raw.info.stride),
-        EGL_IMAGE_PRESERVED_KHR, EGL_TRUE,
-        EGL_NONE
-    };
-
-	EGLint attribs_isp[] = {
+	static const EGLint attribs_isp[] = {
 		EGL_WIDTH, static_cast<EGLint>(buffer.isp.info.width),
 		EGL_HEIGHT, static_cast<EGLint>(buffer.isp.info.height),
 		EGL_LINUX_DRM_FOURCC_EXT, DRM_FORMAT_YUV420,
@@ -293,71 +213,28 @@ void EglBuffers::makeBuffer(const SharedMemoryBuffer* context, FrameBuffer &buff
 		EGL_NONE
 	};
 
-    EGLint attribs_luma[] = {
-        EGL_WIDTH, static_cast<EGLint>(buffer.isp.info.width),
-        EGL_HEIGHT, static_cast<EGLint>(buffer.isp.info.height),
-        EGL_LINUX_DRM_FOURCC_EXT, DRM_FORMAT_R8,
-        EGL_DMA_BUF_PLANE0_FD_EXT, buffer.isp.fd,
-        EGL_DMA_BUF_PLANE0_OFFSET_EXT, 0,
-        EGL_DMA_BUF_PLANE0_PITCH_EXT, static_cast<EGLint>(buffer.isp.info.stride),
-        EGL_NONE
-    };
 
+	EGLImage image_isp = p_eglCreateImageKHR(egl_display_, EGL_NO_CONTEXT, EGL_LINUX_DMA_BUF_EXT, NULL, attribs_isp);
 
-    // EGLImage image_raw = eglCreateImageKHR(eglDpy, EGL_NO_CONTEXT, EGL_LINUX_DMA_BUF_EXT, NULL, attribs_raw);
-	
-    // if (!image_raw){
-    //     MyEglError();
-	// 	throw std::runtime_error("failed to import fd " + std::to_string(buffer.isp.fd));
-    // }
-      
-
-	EGLImage image_isp = eglCreateImageKHR(eglDpy, EGL_NO_CONTEXT, EGL_LINUX_DMA_BUF_EXT, NULL, attribs_isp);
-	    MyEglError();
-
+    MyEglError();
     if (!image_isp){
         MyEglError();
 		throw std::runtime_error("failed to import fd " + std::to_string(buffer.isp.fd));
     }
 
-    // EGLImage image_luma = eglCreateImageKHR(eglDpy, EGL_NO_CONTEXT, EGL_LINUX_DMA_BUF_EXT, NULL, attribs_luma);
-    // if (!image_luma){
-    //     MyEglError();
-    //     throw std::runtime_error("failed to import fd " + std::to_string(buffer.isp.fd));
-    // }
- 
-    // glGenTextures(1, &buffer.raw.texture);
-	// glBindTexture(GL_TEXTURE_EXTERNAL_OES, buffer.raw.texture);
-	// glTexParameteri(GL_TEXTURE_EXTERNAL_OES, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-	// glTexParameteri(GL_TEXTURE_EXTERNAL_OES, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-	// glEGLImageTargetTexture2DOES(GL_TEXTURE_EXTERNAL_OES, image_raw);
-
     MyEglError();
+
 	glGenTextures(1, &buffer.isp.texture);
 	glBindTexture(GL_TEXTURE_EXTERNAL_OES, buffer.isp.texture);
 	glTexParameteri(GL_TEXTURE_EXTERNAL_OES, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 	glTexParameteri(GL_TEXTURE_EXTERNAL_OES, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-	glEGLImageTargetTexture2DOES(GL_TEXTURE_EXTERNAL_OES, image_isp);
-    readEGLImage(eglDpy, image_isp, buffer.isp.info.width, buffer.isp.info.height); // ADD THIS LINE
-
-
-
-    // MyEglError();
-    // glGenTextures(1, &buffer.luma.texture);
-	// glBindTexture(GL_TEXTURE_2D, buffer.luma.texture);
-	// glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-	// glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-    // glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_SWIZZLE_G, GL_RED);
-    // glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_SWIZZLE_B, GL_RED);
-	// glEGLImageTargetTexture2DOES(GL_TEXTURE_2D, image_luma);
+	p_glEGLImageTargetTexture2DOES(GL_TEXTURE_EXTERNAL_OES, image_isp);
 
     MyEglError();
 
-	eglDestroyImageKHR(eglDpy, image_isp);
-    // eglDestroyImageKHR(eglDpy, image_raw);
-    // eglDestroyImageKHR(eglDpy, image_luma);
+	p_eglDestroyImageKHR(egl_display_, image_isp);
     buffer.mapped = 1;
-    console->info("Buffer mapped! raw:{}, isp:{}, lores:{}", buffer.raw.fd, buffer.isp.fd, buffer.lores.fd);
+    console->info("Buffer mapped! isp:{}, lores:{}", buffer.isp.fd, buffer.lores.fd);
 }
 
 

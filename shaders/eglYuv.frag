@@ -3,7 +3,7 @@
 
 precision highp float;
 
-uniform samplerExternalOES tex;
+uniform sampler2D  tex;
 
 out vec4 fragColor;
 in vec2 fragCoord;

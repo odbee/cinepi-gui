@@ -50,7 +50,7 @@ void Application::init(unsigned int w = 240, unsigned int h = 240){
     ImGui_ImplSDL2_InitForOpenGL(window, gl_context);
     ImGui_ImplOpenGL3_Init(glsl_version);
 
-    buffers.init();
+    buffers.initEGLExtensions();
 }
 
 void Application::cleanup(){
