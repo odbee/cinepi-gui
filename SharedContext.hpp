@@ -47,7 +47,6 @@ struct SharedMetadata {
     float colour_gains[2];
 	float focus;
 	float fps;
-	bool aelock;
 	float lens_position;
 	int af_state;
 };
