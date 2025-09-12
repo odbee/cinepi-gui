@@ -12,5 +12,5 @@
 ```
 meson setup build
 
-ninja -c build
+ninja -C build
 ```
