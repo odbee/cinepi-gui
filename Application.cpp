@@ -35,8 +35,8 @@ void Application::init(unsigned int w = 1280, unsigned int h = 720){
     SDL_GL_MakeCurrent(window, gl_context);
     SDL_GL_SetSwapInterval(1); // Enable vsync
 
-    char main_font_path[] = "cinepi-gui/assets/font/ENGCAPS.TTF";
-    char icon_font_path[] = "cinepi-gui/assets/font/fontawesome-webfont.ttf";
+    char main_font_path[] = "/home/pi/cinepi-gui/assets/font/ENGCAPS.TTF";
+    char icon_font_path[] = "/home/pi/cinepi-gui/assets/font/fontawesome-webfont.ttf";
 
     // Setup Dear ImGui context
     IMGUI_CHECKVERSION();
