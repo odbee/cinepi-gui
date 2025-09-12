@@ -38,7 +38,7 @@ class Menus : public Page
     public:
         Menus(Application& app) : 
             Page(app),
-            logo("cinepi-gui/assets/img/logo.png")
+            logo("/home/pi/cinepi-gui/assets/img/logo.png")
             {
                 console = spdlog::stdout_color_mt("menus");
             }
@@ -82,7 +82,7 @@ class Viewport : public Page
     public:
         Viewport(Application& app) : 
             Page(app),
-            yuv_preview("cinepi-gui/shaders/eglYuv.vert","cinepi-gui/shaders/eglYuv.frag")
+            yuv_preview("/home/pi/cinepi-gui/shaders/eglYuv.vert","/home/pi/cinepi-gui/shaders/eglYuv.frag")
             {
                 console = spdlog::stdout_color_mt("viewport");
             }
